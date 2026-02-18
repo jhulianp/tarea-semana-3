@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Página 2 — Inventario</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --morado-oscuro:#2E0854;
+      --morado:#4B0082;
+      --morado-claro:#6A0DAD;
+      --amarillo-apagado:#CCCC00;
+      --amarillo:#FFD700;
+      --acua-marina:#7FFFD4;
+      --carmesí:crimson;
+      --gris-claro:#f0f0f0;
+      --card-width:220px;
+    }
+
+    /* Layout general */
+    html,body{height:100%;margin:0;font-family:'Orbitron',sans-serif;background:linear-gradient(135deg,var(--morado),var(--morado-oscuro));color:var(--amarillo);-webkit-font-smoothing:antialiased}
+    .wrap{max-width:1100px;margin:28px auto;padding:20px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+    h1{margin:0;font-size:1.6rem;color:var(--amarillo)}
+    .sub{color:rgba(255,215,0,0.85);font-size:0.95rem}
+
+    /* Buscador */
+    .controls{display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap}
+    .search{
+      display:flex;align-items:center;background:rgba(255,255,255,0.06);padding:8px;border-radius:10px;border:1px solid rgba(255,215,0,0.12)
+    }
+    .search input{
+      background:transparent;border:none;color:var(--amarillo);outline:none;padding:8px;width:320px;font-size:0.95rem
+    }
+
+    /* Inventario: grid con max 4 por fila */
+    .inventario{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(var(--card-width),1fr));
+      gap:18px;
+      margin-top:22px;
+    }
+
+    .item{
+      background:linear-gradient(180deg,var(--morado-claro),rgba(106,13,173,0.85));
+      border:2px solid rgba(255,215,0,0.18);
+      border-radius:12px;
+      padding:14px;
+      box-shadow:0 8px 18px rgba(0,0,0,0.45);
+      color:var(--amarillo);
+      display:flex;flex-direction:column;align-items:center;gap:8px;
+      min-height:170px;
+    }
+    .item h3{margin:0;font-size:1.05rem}
+    .meta{font-size:0.85rem;color:rgba(255,215,0,0.9)}
+    .precio{font-weight:700;color:var(--gris-claro);background:rgba(0,0,0,0.08);padding:4px 8px;border-radius:6px}
+
+    /* Botones dentro de cada item */
+    .item .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+    .btn{
+      border:none;padding:8px 10px;border-radius:8px;cursor:pointer;font-family:'Orbitron',sans-serif;font-size:0.85rem;
+      box-shadow:0 4px 8px rgba(0,0,0,0.25)
+    }
+    .btn-actualizar{background:var(--acua-marina);color:#082;min-width:110px}
+    .btn-historial{background:var(--amarillo-apagado);color:var(--morado);min-width:110px}
+    .btn-ver{background:var(--amarillo);color:var(--morado);min-width:110px}
+
+    /* Acciones fijas (solo admin) en inferior izquierda */
+    .acciones{
+      position:fixed;left:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:40;
+    }
+    .acciones .btn-add{background:var(--amarillo-apagado);color:var(--morado);padding:12px 14px;border-radius:10px}
+    .acciones .btn-del{background:var(--carmesí);color:#fff;padding:12px 14px;border-radius:10px}
+    .acciones .btn-extra{background:var(--amarillo);color:var(--morado);padding:12px 14px;border-radius:10px}
+
+    /* Formularios/modales simples */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:none;align-items:center;justify-content:center;z-index:60}
+    .modal{background:linear-gradient(180deg,#fff,#f7f7f7);color:#222;padding:18px;border-radius:12px;min-width:320px;max-width:520px;box-shadow:0 12px 30px rgba(0,0,0,0.5)}
+    .modal h2{margin:0 0 10px 0;color:var(--morado)}
+    .modal label{display:block;font-size:0.85rem;color:#333;margin-top:8px}
+    .modal input{width:100%;padding:10px;border-radius:8px;border:1px solid #ddd;margin-top:6px;font-family:inherit}
+    .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .modal .actions button{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+
+    /* Lista dentro del modal */
+    .list{max-height:260px;overflow:auto;margin-top:8px;border-radius:8px;padding:8px;background:#fff}
+    .list-item{padding:8px;border-bottom:1px solid #eee;font-size:0.9rem;color:#222}
+
+    /* Responsive */
+    @media (max-width:520px){
+      .search input{width:160px}
+      .item{min-height:150px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Inventario</h1>
+        <div class="sub" id="usuarioInfo">Cargando usuario...</div>
+      </div>
+      <div>
+        <button class="btn btn-ver" id="btnCerrar">Cerrar sesión</button>
+      </div>
+    </header>
+
+    <div class="controls">
+      <div class="search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="margin-right:8px"><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="busqueda" placeholder="Buscar por nombre o ID" />
+      </div>
+      <div style="margin-left:auto;color:rgba(255,215,0,0.9);font-size:0.95rem" id="infoResumen"></div>
+    </div>
+
+    <main>
+      <section class="inventario" id="inventario"></section>
+    </main>
+  </div>
+
+  <!-- Acciones admin (añadir/eliminar/estadísticas/historial global) -->
+  <div class="acciones" id="accionesAdmin" style="display:none">
+    <button class="btn-add btn" id="btnAdd">Añadir objeto</button>
+    <button class="btn-del btn" id="btnDelete">Eliminar objeto</button>
+    <button class="btn-extra btn" id="btnVerHistorialGlobal">Ver historial de ventas</button>
+    <button class="btn-extra btn" id="btnVerEstadisticas">Ver estadísticas</button>
+  </div>
+
+  <!-- Modal: Añadir / Eliminar -->
+  <div class="modal-backdrop" id="modalForm">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2 id="modalTitle">Título</h2>
+      <label>Nombre</label>
+      <input id="formNombre" type="text" />
+      <label>Precio (USD)</label>
+      <input id="formPrecio" type="number" min="0" step="0.01" />
+      <div class="actions">
+        <button id="btnCancel">Cancelar</button>
+        <button id="btnConfirm" style="background:var(--amarillo);color:var(--morado)">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Lista (entradas / ventas / historial global / estadísticas) -->
+  <div class="modal-backdrop" id="modalList">
+    <div class="modal">
+      <h2 id="modalListTitle">Lista</h2>
+      <div class="list" id="modalListContent"></div>
+      <div class="actions">
+        <button id="btnCloseList">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***********************
+     * Persistencia local
+     ***********************/
+    const STORAGE_KEY = 'inventario_v1';
+    const STORAGE_CUENTAS = 'cuentas';
+    const STORAGE_USUARIO_ACTIVO = 'usuarioActivo';
+
+    // Inventario inicial (4 objetos, 2 relacionados con fiestas de cumpleaños)
+    const inventarioInicial = [
+      { id: 'OBJ1', nombre: 'Globos de colores', stock: 5, precio: 10, historialEntradas: [], historialVentas: [] },
+      { id: 'OBJ2', nombre: 'Pastel de cumpleaños', stock: 5, precio: 50, historialEntradas: [], historialVentas: [] },
+      { id: 'OBJ3', nombre: 'Velas mágicas', stock: 5, precio: 5, historialEntradas: [], historialVentas: [] },
+      { id: 'OBJ4', nombre: 'Sombreros festivos', stock: 5, precio: 15, historialEntradas: [], historialVentas: [] }
+    ];
+
+    function loadInventory(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw){
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(inventarioInicial));
+        return JSON.parse(JSON.stringify(inventarioInicial));
+      }
+      try { return JSON.parse(raw); } catch { localStorage.setItem(STORAGE_KEY, JSON.stringify(inventarioInicial)); return JSON.parse(JSON.stringify(inventarioInicial)); }
+    }
+    function saveInventory(inv){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(inv));
+    }
+
+    /***********************
+     * Usuario actual y UI
+     ***********************/
+    const cuentas = JSON.parse(localStorage.getItem(STORAGE_CUENTAS)) || [];
+    const usuarioActivo = localStorage.getItem(STORAGE_USUARIO_ACTIVO) || null;
+    const usuarioActual = cuentas.find(c => c.usuario === usuarioActivo) || null;
+
+    const inventarioEl = document.getElementById('inventario');
+    const busquedaEl = document.getElementById('busqueda');
+    const accionesAdmin = document.getElementById('accionesAdmin');
+    const usuarioInfo = document.getElementById('usuarioInfo');
+    const infoResumen = document.getElementById('infoResumen');
+
+    let inventario = loadInventory();
+
+    // Mostrar info usuario y controles según tipo
+    if(!usuarioActual){
+      usuarioInfo.textContent = 'Usuario no identificado. Inicia sesión nuevamente.';
+      // ocultar botones admin por seguridad
+      accionesAdmin.style.display = 'none';
+    } else {
+      usuarioInfo.textContent = `${usuarioActual.usuario} — ${usuarioActual.tipo}`;
+      if(usuarioActual.tipo === 'administrador'){
+        accionesAdmin.style.display = 'flex';
+      } else {
+        accionesAdmin.style.display = 'none';
+      }
+    }
+
+    /***********************
+     * Renderizado
+     ***********************/
+    function render(lista){
+      inventarioEl.innerHTML = '';
+      lista.forEach(item => {
+        const card = document.createElement('article');
+        card.className = 'item';
+        card.innerHTML = `
+          <h3>${escapeHtml(item.nombre)}</h3>
+          <div class="meta">ID: ${item.id}</div>
+          <div class="meta">Stock: <strong>${item.stock}</strong></div>
+          <div class="precio">$${Number(item.precio).toFixed(2)}</div>
+        `;
+
+        // botones según tipo
+        const row = document.createElement('div');
+        row.className = 'row';
+
+        // Botón actualizar: admin -> "Actualizar Stock" (añadir entradas)
+        // empleado -> "Registrar Venta" (pregunta cuántos se vendieron y descuenta)
+        const btnActualizar = document.createElement('button');
+        btnActualizar.className = 'btn btn-actualizar';
+        btnActualizar.textContent = (usuarioActual && usuarioActual.tipo === 'empleado') ? 'Registrar Venta' : 'Actualizar Stock';
+        btnActualizar.onclick = () => {
+          if(usuarioActual && usuarioActual.tipo === 'empleado'){
+            registrarVenta(item.id);
+          } else {
+            actualizarStockModal(item.id);
+          }
+        };
+        row.appendChild(btnActualizar);
+
+        // Botón ver historial de entradas (visible para empleado y admin)
+        const btnVerEntradas = document.createElement('button');
+        btnVerEntradas.className = 'btn btn-historial';
+        btnVerEntradas.textContent = 'Ver Entradas';
+        btnVerEntradas.onclick = () => verHistorialEntradas(item.id);
+        row.appendChild(btnVerEntradas);
+
+        // Para empleados: botón ver ventas del producto (lista de ventas)
+        if(usuarioActual && usuarioActual.tipo === 'empleado'){
+          const btnVerVentas = document.createElement('button');
+          btnVerVentas.className = 'btn btn-ver';
+          btnVerVentas.textContent = 'Ver Ventas';
+          btnVerVentas.onclick = () => verHistorialVentas(item.id);
+          row.appendChild(btnVerVentas);
+        }
+
+        card.appendChild(row);
+        inventarioEl.appendChild(card);
+      });
+
+      // resumen rápido
+      const totalItems = inventario.length;
+      const totalStock = inventario.reduce((s,i)=>s+i.stock,0);
+      infoResumen.textContent = `Productos: ${totalItems} · Stock total: ${totalStock}`;
+    }
+
+    // Escape simple para evitar inyección en nombres
+    function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[s]); }
+
+    render(inventario);
+
+    /***********************
+     * Búsqueda
+     ***********************/
+    busquedaEl.addEventListener('input', () => {
+      const q = busquedaEl.value.trim().toLowerCase();
+      if(!q) return render(inventario);
+      const filtrado = inventario.filter(i => i.nombre.toLowerCase().includes(q) || i.id.toLowerCase().includes(q));
+      render(filtrado);
+    });
+
+    /***********************
+     * Modal: Añadir / Eliminar (admin)
+     ***********************/
+    const modalForm = document.getElementById('modalForm');
+    const modalTitle = document.getElementById('modalTitle');
+    const formNombre = document.getElementById('formNombre');
+    const formPrecio = document.getElementById('formPrecio');
+    const btnCancel = document.getElementById('btnCancel');
+    const btnConfirm = document.getElementById('btnConfirm');
+
+    let accionForm = null; // 'anadir' | 'eliminar' | null
+
+    document.getElementById('btnAdd').addEventListener('click', () => openForm('anadir'));
+    document.getElementById('btnDelete').addEventListener('click', () => openForm('eliminar'));
+
+    function openForm(accion){
+      if(!usuarioActual || usuarioActual.tipo !== 'administrador') return;
+      accionForm = accion;
+      modalForm.style.display = 'flex';
+      formNombre.value = '';
+      formPrecio.value = '';
+      modalTitle.textContent = accion === 'anadir' ? 'Añadir nuevo producto' : 'Eliminar producto (por nombre exacto)';
+      formPrecio.style.display = accion === 'anadir' ? 'block' : 'none';
+    }
+
+    btnCancel.addEventListener('click', () => { modalForm.style.display = 'none'; accionForm = null; });
+
+    btnConfirm.addEventListener('click', () => {
+      const nombre = formNombre.value.trim();
+      const precio = parseFloat(formPrecio.value);
+      if(!nombre){ alert('Ingrese el nombre del producto'); return; }
+
+      if(accionForm === 'anadir'){
+        const nuevoId = generarId();
+        const nuevo = { id: nuevoId, nombre, stock: 5, precio: isNaN(precio) ? 0 : precio, historialEntradas: [{cantidad:5, fecha: hoyDiaMes()}], historialVentas: [] };
+        inventario.push(nuevo);
+        saveInventory(inventario);
+        render(inventario);
+        modalForm.style.display = 'none';
+        accionForm = null;
+      } else if(accionForm === 'eliminar'){
+        const antes = inventario.length;
+        inventario = inventario.filter(i => i.nombre.toLowerCase() !== nombre.toLowerCase());
+        if(inventario.length === antes){ alert('No se encontró un producto con ese nombre exacto'); return; }
+        saveInventory(inventario);
+        render(inventario);
+        modalForm.style.display = 'none';
+        accionForm = null;
+      }
+    });
+
+    function generarId(){
+      // Genera ID único tipo OBJ + número incremental
+      const nums = inventario.map(i => {
+        const m = i.id.match(/(\d+)$/);
+        return m ? parseInt(m[1],10) : 0;
+      });
+      const max = nums.length ? Math.max(...nums) : 0;
+      return 'OBJ' + (max + 1);
+    }
+
+    /***********************
+     * Actualizar stock (admin) -> abre prompt para cantidad a añadir
+     ***********************/
+    function actualizarStockModal(id){
+      const cantidadStr = prompt('Ingrese la cantidad que llegó (número entero positivo):', '1');
+      const cantidad = parseInt(cantidadStr,10);
+      if(isNaN(cantidad) || cantidad <= 0){ alert('Cantidad inválida'); return; }
+      const item = inventario.find(i => i.id === id);
+      if(!item) return;
+      item.stock += cantidad;
+      item.historialEntradas = item.historialEntradas || [];
+      item.historialEntradas.push({ cantidad, fecha: hoyDiaMes() });
+      saveInventory(inventario);
+      render(inventario);
+    }
+
+    /***********************
+     * Registrar venta (empleado) -> pregunta cuántos se vendieron y descuenta
+     ***********************/
+    function registrarVenta(id){
+      const cantidadStr = prompt('¿Cuántos se han vendido? (número entero positivo):', '1');
+      const cantidad = parseInt(cantidadStr,10);
+      if(isNaN(cantidad) || cantidad <= 0){ alert('Cantidad inválida'); return; }
+      const item = inventario.find(i => i.id === id);
+      if(!item) return;
+      if(cantidad > item.stock){ alert('No hay suficiente stock. Stock actual: ' + item.stock); return; }
+      item.stock -= cantidad;
+      item.historialVentas = item.historialVentas || [];
+      item.historialVentas.push({ cantidad, fecha: hoyDiaMes(), usuario: usuarioActual ? usuarioActual.usuario : 'desconocido' });
+      saveInventory(inventario);
+      render(inventario);
+    }
+
+    /***********************
+     * Ver historial de entradas por producto (día/mes)
+     ***********************/
+    const modalList = document.getElementById('modalList');
+    const modalListTitle = document.getElementById('modalListTitle');
+    const modalListContent = document.getElementById('modalListContent');
+    const btnCloseList = document.getElementById('btnCloseList');
+    btnCloseList.addEventListener('click', ()=> modalList.style.display = 'none');
+
+    function verHistorialEntradas(id){
+      const item = inventario.find(i => i.id === id);
+      if(!item){ alert('Producto no encontrado'); return; }
+      modalListTitle.textContent = `Entradas — ${item.nombre}`;
+      modalListContent.innerHTML = '';
+      const entradas = (item.historialEntradas || []).slice().reverse();
+      if(entradas.length === 0) modalListContent.innerHTML = '<div class="list-item">No hay registros de entradas.</div>';
+      else entradas.forEach(e => {
+        modalListContent.innerHTML += `<div class="list-item">+${e.cantidad} — ${e.fecha}</div>`;
+      });
+      modalList.style.display = 'flex';
+    }
+
+    function verHistorialVentas(id){
+      const item = inventario.find(i => i.id === id);
+      if(!item){ alert('Producto no encontrado'); return; }
+      modalListTitle.textContent = `Ventas — ${item.nombre}`;
+      modalListContent.innerHTML = '';
+      const ventas = (item.historialVentas || []).slice().reverse();
+      if(ventas.length === 0) modalListContent.innerHTML = '<div class="list-item">No hay registros de ventas.</div>';
+      else ventas.forEach(v => {
+        modalListContent.innerHTML += `<div class="list-item">-${v.cantidad} — ${v.fecha} — ${v.usuario || 'usuario'}</div>`;
+      });
+      modalList.style.display = 'flex';
+    }
+
+    /***********************
+     * Admin: ver historial global de ventas
+     ***********************/
+    document.getElementById('btnVerHistorialGlobal').addEventListener('click', () => {
+      if(!usuarioActual || usuarioActual.tipo !== 'administrador') return;
+      modalListTitle.textContent = 'Historial global de ventas';
+      modalListContent.innerHTML = '';
+      const todasVentas = [];
+      inventario.forEach(it => {
+        (it.historialVentas || []).forEach(v => {
+          todasVentas.push({ producto: it.nombre, id: it.id, cantidad: v.cantidad, fecha: v.fecha, usuario: v.usuario || 'desconocido' });
+        });
+      });
+      if(todasVentas.length === 0) modalListContent.innerHTML = '<div class="list-item">No hay ventas registradas.</div>';
+      else {
+        // ordenar por fecha (no tenemos año, así que mantener orden de inserción)
+        todasVentas.reverse().forEach(v => {
+          modalListContent.innerHTML += `<div class="list-item">${v.fecha} — ${v.producto} (${v.id}) — -${v.cantidad} — ${v.usuario}</div>`;
+        });
+      }
+      modalList.style.display = 'flex';
+    });
+
+    /***********************
+     * Admin: estadísticas (stock más bajo/alto, más vendido/menos vendido)
+     ***********************/
+    document.getElementById('btnVerEstadisticas').addEventListener('click', () => {
+      if(!usuarioActual || usuarioActual.tipo !== 'administrador') return;
+      if(inventario.length === 0){ alert('No hay productos'); return; }
+
+      // stock más bajo / más alto
+      const sortedByStock = inventario.slice().sort((a,b)=>a.stock-b.stock);
+      const minStock = sortedByStock[0];
+      const maxStock = sortedByStock[sortedByStock.length-1];
+
+      // más vendido / menos vendido (por suma de historialVentas.cantidad)
+      const ventasSum = inventario.map(it => {
+        const totalVendido = (it.historialVentas || []).reduce((s,v)=>s+v.cantidad,0);
+        return { id: it.id, nombre: it.nombre, vendido: totalVendido, stock: it.stock };
+      });
+      const sortedByVendido = ventasSum.slice().sort((a,b)=>a.vendido-b.vendido);
+      const menosVendido = sortedByVendido[0];
+      const masVendido = sortedByVendido[sortedByVendido.length-1];
+
+      modalListTitle.textContent = 'Estadísticas';
+      modalListContent.innerHTML = '';
+      modalListContent.innerHTML += `<div class="list-item">Stock más bajo: ${minStock.nombre} (${minStock.id}) — ${minStock.stock}</div>`;
+      modalListContent.innerHTML += `<div class="list-item">Stock más alto: ${maxStock.nombre} (${maxStock.id}) — ${maxStock.stock}</div>`;
+      modalListContent.innerHTML += `<div class="list-item">Más vendido: ${masVendido.nombre} (${masVendido.id}) — ${masVendido.vendido} unidades</div>`;
+      modalListContent.innerHTML += `<div class="list-item">Menos vendido: ${menosVendido.nombre} (${menosVendido.id}) — ${menosVendido.vendido} unidades</div>`;
+      modalList.style.display = 'flex';
+    });
+
+    /***********************
+     * Cerrar sesión
+     ***********************/
+    document.getElementById('btnCerrar').addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_USUARIO_ACTIVO);
+      window.location.href = 'index.html';
+    });
+
+    /***********************
+     * Utilidades
+     ***********************/
+    function hoyDiaMes(){
+      const d = new Date();
+      const dia = String(d.getDate()).padStart(2,'0');
+      const mes = String(d.getMonth()+1).padStart(2,'0');
+      return `${dia}/${mes}`;
+    }
+
+    // Guardar cambios cuando se cierra la pestaña
+    window.addEventListener('beforeunload', () => saveInventory(inventario));
+
+    // Cerrar modales al hacer click fuera
+    document.querySelectorAll('.modal-backdrop').forEach(back => {
+      back.addEventListener('click', (e) => {
+        if(e.target === back) back.style.display = 'none';
+      });
+    });
+
+    // Inicial: si no hay inventario en storage, ya cargado por loadInventory
+    saveInventory(inventario);
+  </script>
+</body>
+</html>

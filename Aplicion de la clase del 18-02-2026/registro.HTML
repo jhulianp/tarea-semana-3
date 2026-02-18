@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Registro de Cuenta</title>
+  <style>
+    body {
+      background: linear-gradient(135deg, #4B0082, #2E0854);
+      font-family: 'Orbitron', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .registro-container {
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+      text-align: center;
+      width: 400px;
+    }
+    h1 {
+      color: #FFD700;
+      margin-bottom: 20px;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Orbitron', sans-serif;
+      background-color: #f0f0f0;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #FFD700;
+      color: #4B0082;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: bold;
+      margin-top: 15px;
+    }
+    button:hover {
+      background-color: #e6c200;
+    }
+    a {
+      color: #FFD700;
+      text-decoration: none;
+      display: block;
+      margin-top: 15px;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="registro-container">
+    <h1>Registro de Cuenta</h1>
+    <form id="registroForm">
+      <input type="text" id="usuario" placeholder="Usuario" required>
+      <input type="password" id="clave" placeholder="Contraseña" required>
+      <input type="date" id="fechaNacimiento" required>
+      <input type="text" id="documento" placeholder="Documento de Identificación" required>
+      <select id="tipo" required>
+        <option value="">Seleccione tipo de cuenta</option>
+        <option value="administrador">Administrador</option>
+        <option value="empleado">Empleado</option>
+      </select>
+      <button type="submit">Registrar</button>
+    </form>
+    <a href="index.html">Volver al inicio de sesión</a>
+  </div>
+
+  <script>
+    document.getElementById("registroForm").addEventListener("submit", function(e){
+      e.preventDefault();
+      let usuario = document.getElementById("usuario").value.trim();
+      let clave = document.getElementById("clave").value.trim();
+      let fechaNacimiento = document.getElementById("fechaNacimiento").value;
+      let documento = document.getElementById("documento").value.trim();
+      let tipo = document.getElementById("tipo").value;
+
+      let cuentas = JSON.parse(localStorage.getItem("cuentas")) || [];
+
+      if(cuentas.find(c => c.usuario === usuario)){
+        alert("El usuario ya existe");
+        return;
+      }
+
+      // Guardar correctamente el tipo de cuenta
+      cuentas.push({usuario, clave, fechaNacimiento, documento, tipo});
+      localStorage.setItem("cuentas", JSON.stringify(cuentas));
+
+      alert("Cuenta creada exitosamente como " + tipo);
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>
